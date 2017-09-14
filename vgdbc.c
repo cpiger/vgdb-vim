@@ -92,6 +92,17 @@ const char *test(const char *cmd)
 const char *tcpcall(const char *cmd)
 {
 	int VGDB_PORT = 30899;
+#ifdef _WINDOWS
+    /* printf("cmd: %s \n", cmd); */
+    cmd = &cmd[11];
+    /* printf("cmd: %s \n", cmd); */
+    VGDB_PORT = atoi(cmd);
+    /* printf("VGDB_PORT:%d\n", VGDB_PORT); */
+    cmd = strchr(cmd, ':');
+    cmd = &cmd[1];
+    /* printf("cmd:%s \n", cmd); */
+#endif
+
 	SOCKET SOCK;
 
 	int ret;
@@ -114,6 +125,7 @@ const char *tcpcall(const char *cmd)
 		WSACleanup();
 		ERR_RET(-1, "fail to create socket");
 	}
+#ifndef _WINDOWS 
 	char *portstr = getenv("VGDB_PORT");
 	if (portstr != NULL) {
 		int port = atoi(portstr);
@@ -121,6 +133,7 @@ const char *tcpcall(const char *cmd)
 			VGDB_PORT = port;
 		}
 	}
+#endif
 
 	SOCKADDR_IN addrSrv;
 	addrSrv.sin_addr.s_addr = inet_addr("127.0.0.1");

@@ -40,10 +40,11 @@ rem vgdb.bat and vgdbc.dll MUST in the search path, e.g. c:\windows\system32
 echo @%PERL% %CD%\vgdb %%* > %BIN%\vgdb.bat
 :: copy vgdb.bat %BIN%\
 copy vgdbc.dll %BIN%\
+copy vgdb.vbs %BIN%\
 
 rem copy the plugin and doc to your vim folder
-copy vgdb.vim %VIMFILES%\plugin\vgdb.vim
-copy __README__.txt %VIMFILES%\doc\vgdb.txt
+copy vgdb-vim\plugin\vgdb.vim %VIMFILES%\plugin\vgdb.vim
+copy vgdb-vim\doc\vgdb.txt %VIMFILES%\doc\vgdb.txt
 
 set opt=y
 set /p opt="view doc? (=y/n) "

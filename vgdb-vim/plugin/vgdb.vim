@@ -30,6 +30,7 @@ let s:vgdb_lib = s:ismswin ? 'vgdbc.dll' : 'libvgdbc.so'
 " ====== global {{{
 let s:bplist = {} " id => {file, line, disabled} that returned by gdb
 
+let s:gdbd_port = 30777 
 let s:vgdb_running = 0
 let s:debugging = 0
 " for pathfix
@@ -435,8 +436,8 @@ function! VGdb_call(cmd)
 	close O;
 EOF
 		let lines = readfile("tmp1")
-	elseif exists("g:vgdb_uselibcall") && g:vgdb_uselibcall
-		let lines = libcall(s:vgdb_lib, "tcpcall", usercmd)
+    elseif exists("g:vgdb_uselibcall") && g:vgdb_uselibcall
+        let lines = libcall(s:vgdb_lib, "tcpcall", usercmd)
 	else
 		let usercmd = substitute(usercmd, '["$]', '\\\0', 'g')
 		let lines = system(s:vgdb_client . " \"" . usercmd . "\"")
@@ -462,13 +463,17 @@ function! VGdb(cmd, ...)  " [mode]
 				" the one in the file vgdbc.c
 				" LIMITATION: 1 debugging at one time on MSWin with libcall
 				let $VGDB_PORT = 30899
+				let s:gdbd_port= 30000 + reltime()[1] % 10000
 			else
 				let $VGDB_PORT= 30000 + reltime()[1] % 10000
 			endif
 		endif
 		if s:ismswin
 			" !!! "!start" is different from "! start"
-			let startcmd = "!start vgdb.bat -vi " . usercmd
+            " let startcmd = "!start vgdb.bat -vi " . usercmd
+            " let startcmd = "!start vgdbd.bat -vi " . usercmd
+            " let startcmd = "!start vgdb.bat -vgdb-port:". s:gdbd_port . ' -vi  ' . usercmd
+            let startcmd = "!vgdb.vbs -vgdb-port:". s:gdbd_port . ' -vi  ' . usercmd
 		else
 			if !has('gui')
 				let startcmd = "!vgdb -vi ".usercmd." &>/dev/null &"
@@ -476,7 +481,7 @@ function! VGdb(cmd, ...)  " [mode]
 				let startcmd = "!vgdb -vi ".usercmd." &"
 			endif
 		endif
-		exe 'silent '.startcmd
+        exe 'silent '.startcmd
 		call VGdb_open()
 " 		if is_loadfile
 " 			sleep 200 m
@@ -547,7 +552,11 @@ function! VGdb(cmd, ...)  " [mode]
 		$delete
 	endif
 
-	let lines = split(VGdb_call(usercmd), "\n")
+    if s:ismswin && g:vgdb_uselibcall
+        let lines = split(VGdb_call("-vgdb-port:". s:gdbd_port .':'.usercmd), "\n")
+    else
+        let lines = split(VGdb_call(usercmd), "\n")
+    endif
 
 	for line in lines
 		let hideline = 0
