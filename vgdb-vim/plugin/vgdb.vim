@@ -205,6 +205,7 @@ function! VGdb_open()
 
 	call VGdb(".init") " get init msg
 	starti!
+    call cursor(0, 7)
 	
 	"wincmd p
 endfunction
@@ -436,9 +437,14 @@ function! VGdb_call(cmd)
 	close O;
 EOF
 		let lines = readfile("tmp1")
+
     elseif exists("g:vgdb_uselibcall") && g:vgdb_uselibcall
-        let lines = libcall(s:vgdb_lib, "tcpcall", usercmd)
-	else
+        if s:ismswin
+            let lines = libcall(s:vgdb_lib, "tcpcall", "-vgdb-port:". s:gdbd_port .':'.usercmd)
+        else
+            let lines = libcall(s:vgdb_lib, "tcpcall", usercmd)
+        endif
+    else
 		let usercmd = substitute(usercmd, '["$]', '\\\0', 'g')
 		let lines = system(s:vgdb_client . " \"" . usercmd . "\"")
 	endif
@@ -552,11 +558,7 @@ function! VGdb(cmd, ...)  " [mode]
 		$delete
 	endif
 
-    if s:ismswin && g:vgdb_uselibcall
-        let lines = split(VGdb_call("-vgdb-port:". s:gdbd_port .':'.usercmd), "\n")
-    else
-        let lines = split(VGdb_call(usercmd), "\n")
-    endif
+    let lines = split(VGdb_call(usercmd), "\n")
 
 	for line in lines
 		let hideline = 0
@@ -638,6 +640,27 @@ function! VGdb_runToCursur()
 	call VGdb("@tb ".key." ; c")
 endf
 
+function! VGdb_isPrompt()
+    " if ( strpart(s:vgdb_prompt, 0, 5) == strpart(getline("."), 0, 5) && col(".") <= strlen(s:vgdb_prompt)+1 ) || strpart(s:vgdb_prompt, 0, 5) != strpart(getline("."), 0, 5)
+        " return 1
+    " else
+        " return 0
+    " endif
+    if  strpart(s:vgdb_prompt, 0, 5) == strpart(getline("."), 0, 5) && col(".") <= strlen(s:vgdb_prompt)+1 
+        return 1
+    else
+        return 0
+    endif
+endf
+
+function! VGdb_isModifiable()
+    if  strpart(s:vgdb_prompt, 0, 5) == strpart(getline("."), 0, 5) && col(".") >= strlen(s:vgdb_prompt)
+        return 1
+    else
+        return 0
+    endif
+endf
+
 function! s:VGdb_shortcuts()
 
 	" syntax
@@ -659,6 +682,18 @@ function! s:VGdb_shortcuts()
 
 	
 	" shortcut in VGDB window
+    inoremap <expr><buffer><BS>  VGdb_isPrompt() ? "" : "\<BS>"
+    nnoremap <expr><buffer>i  VGdb_isModifiable() ? "i" : ""  
+    nnoremap <expr><buffer>I  VGdb_isModifiable() ? "I" : ""  
+    nnoremap <expr><buffer>a  VGdb_isModifiable() ? "a" : ""  
+    " nnoremap <expr><buffer>A  VGdb_isModifiable() ? "A" : ""  
+    nnoremap <expr><buffer>x  VGdb_isModifiable() ? "x" : ""  
+    nnoremap <expr><buffer>X  VGdb_isModifiable() ? "X" : ""  
+    nnoremap <expr><buffer>s  VGdb_isModifiable() ? "s" : ""  
+    nnoremap <expr><buffer>S  VGdb_isModifiable() ? "S" : ""  
+    nnoremap <expr><buffer>c  VGdb_isModifiable() ? "c" : ""  
+    nnoremap <expr><buffer>C  VGdb_isModifiable() ? "C" : ""  
+
     inoremap <buffer> <silent> <CR> <c-o>:call VGdb(getline('.'), 'i')<cr>
 	imap <buffer> <silent> <2-LeftMouse> <cr>
 	imap <buffer> <silent> <kEnter> <cr>

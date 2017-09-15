@@ -21,18 +21,24 @@ A flash demo in my package helps you quickly go through the vgdb features.
 
 On Linux, run vgdb_install and specify path.
 
-	# sh vgdb_install
+    #cp ./vgdb /usr/local/bin/
+    #chmod a+x /usr/local/bin/vgdb
+    #cp ./libvgdbc.so /usr/lib64
+    #cp ./vgdb-vim $VIMFILES/
 
 On MS Windows, you need install Perl (and of course gcc/gdb).
-Run vgdb_install_mswin.bat that actually copy files to your folder.
+   1. install strawberry-perl-5.26.0.2-64bit.msi and make sure perl.exe in the default search path;
+   2. install tdm-gcc-5.1.0-3.exe and make sure gdb.exe in the default search path;
+   3. copy vgdb vgdb.bat vgdb.vbs vgdbc.dll to your vim.exe/gvim.exe directory and make sure perl.exe in the default search path;
+   4. copy vgdb-vim to $VIMFILES directory;
 
 Note: 
 - gvim MUST in the default search path.
 
 My dev environment:
 - Windows: 
- - Perl 5.8.8 MSWin32-x86
- - Gdb 7.4 i686-pc-mingw32
+ - strawberry-perl-5.26.0.2-64bit.msi
+ - tdm-gcc-5.1.0-3.exe
 - Linux:
  - Perl 5.10.0 for x86_64-linux
  - Gdb 7.3 x86_64-suse-linux
