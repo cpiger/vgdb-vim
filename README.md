@@ -29,7 +29,7 @@ On Linux, run vgdb_install and specify path.
 On MS Windows, you need install Perl (and of course gcc/gdb).
    1. install strawberry-perl-5.26.0.2-64bit.msi and make sure perl.exe in the default search path;
    2. install tdm-gcc-5.1.0-3.exe and make sure gdb.exe in the default search path;
-   3. copy vgdb vgdb.bat vgdb.vbs vgdbc.dll to your vim.exe/gvim.exe directory and make sure perl.exe in the default search path;
+   3. copy vgdb vgdb.bat vgdb.vbs vgdbc.dll to your vim.exe/gvim.exe directory and make sure gvim.exe in the default search path;
    4. copy vgdb-vim to $VIMFILES directory;
 
 Note: 
