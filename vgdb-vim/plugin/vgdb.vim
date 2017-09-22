@@ -1,6 +1,7 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
 " vgdb - Vim plugin for interface to gdb from cterm
 " Maintainer: Liang, Jian (skyshore@gmail.com)
+ "            scott (pigscott@qq.com)
 " Thanks to gdbvim and vimgdb.
 "
 " Feedback welcome.
@@ -15,10 +16,11 @@ let s:ismswin=has('win32')
 
 " ====== config {{{
 let loaded_vgdb = 1
-let s:vgdb_winheight = 10
+let s:vgdb_winheight = 15
 let s:vgdb_bufname = "__VGDB__"
 let s:vgdb_prompt = '(gdb) '
 let s:dbg = 'gdb'
+let g:vgdb_exrc = $HOME.'/.data/vgdb_exrc'
 
 let s:perldbPromptRE = '^\s*DB<\+\d\+>\+\s*'
 
@@ -50,22 +52,26 @@ endif
 
 let s:set_disabled_bp = 0
 "}}}
-" ====== syntax {{{
-highlight DebugBreak guibg=darkred guifg=white ctermbg=darkred ctermfg=white
-highlight DisabledBreak guibg=lightred guifg=black ctermbg=lightred ctermfg=black
-sign define vgdbBreakpoint linehl=DebugBreak text=B> 
-sign define vgdbDisabledbp linehl=DisabledBreak text=b> 
-" sign define current linehl=DebugStop
-sign define vgdbCurrent linehl=Search text=>> texthl=Search
+    " ====== syntax {{{
+    highlight DebugBreak guibg=darkred guifg=white ctermbg=darkred ctermfg=white
+    highlight DisabledBreak guibg=lightred guifg=black ctermbg=lightred ctermfg=black
 
-" highlight vgdbGoto guifg=Blue
-hi def link vgdbKey Statement
-hi def link vgdbHiLn Statement
-hi def link vgdbGoto Underlined
-hi def link vgdbPtr Underlined
-hi def link vgdbFrame LineNr
-hi def link vgdbCmd Macro
-"}}}
+    " sign define vgdbBreakpoint linehl=DebugBreak text=B> 
+    " sign define vgdbDisabledbp linehl=DisabledBreak text=b> 
+    sign define vgdbBreakpoint linehl=DebugBreak text=B> texthl=DebugBreak
+    sign define vgdbDisabledbp linehl=DisabledBreak text=b> texthl=DisabledBreak
+    " sign define current linehl=DebugStop
+    " sign define vgdbCurrent linehl=Search text=>> texthl=Search
+    sign define vgdbCurrent linehl=MatchParen text=>> texthl=MatchParen
+
+    " highlight vgdbGoto guifg=Blue
+    hi def link vgdbKey Statement
+    hi def link vgdbHiLn Statement
+    hi def link vgdbGoto Underlined
+    hi def link vgdbPtr Underlined
+    hi def link vgdbFrame LineNr
+    hi def link vgdbCmd Macro
+    "}}}
 " ====== toolkit {{{
 let s:match = []
 function! s:mymatch(expr, pat)
@@ -108,7 +114,7 @@ endf
 function! s:gotoTgtWin()
 	let gdbwin = bufwinnr(s:vgdb_bufname)
 	if winnr() == gdbwin
-		exec "wincmd p"
+        exec "wincmd k"
 	endif
 endf
 
@@ -167,12 +173,24 @@ function! s:VGdb_openWindow()
 
     " Create the tag explorer window
     exe 'silent!  botright ' . s:vgdb_winheight . 'split ' . wcmd
+    if line('$') <= 1 && g:vgdb_enable_help
+        silent call append ( 0, s:help_text )
+        silent exec '$d _'
+    else
+        silent loadview
+    endif
 endfunction
 
 " NOTE: this function will be called by vgdb script.
 function! VGdb_open()
 	" save current setting and restore when vgdb quits via 'so .exrc'
-	mk!
+	" exec 'mk! '
+    exec 'mk! ' . g:vgdb_exrc . s:gdbd_port
+    "delete line set runtimepath for missing some functions after vgdb quit
+    silent exec '!start /b sed -i "/set runtimepath/d" ' . g:vgdb_exrc . s:gdbd_port
+    let sed_tmp = fnamemodify(g:vgdb_exrc . s:gdbd_port, ":p:h")
+    silent exec '!start /b rm -f '. sed_tmp . '/sed*'   
+
 	set nocursorline
 	set nocursorcolumn
 
@@ -410,14 +428,21 @@ function! s:VGdb_cb_close()
 	endif
 
 	" If gdb window is open then close it.
-	call s:gotoGdbWin()
-	quit
+    call s:gotoGdbWin()
+    quit
 
     silent! autocmd! VGdbAutoCommand
+    mapclear 
+    mapclear!
+
 	if s:ismswin
-		so _exrc
+        " so _exrc
+        exec 'so '. g:vgdb_exrc . s:gdbd_port
+        call delete(g:vgdb_exrc . s:gdbd_port)
 	else
-		so .exrc
+        " so .exrc
+        exec 'so '. g:vgdb_exrc . s:gdbd_port
+        call delete(g:vgdb_exrc . s:gdbd_port)
 	endif
 endf
 
@@ -477,8 +502,6 @@ function! VGdb(cmd, ...)  " [mode]
 		if s:ismswin
 			" !!! "!start" is different from "! start"
             " let startcmd = "!start vgdb.bat -vi " . usercmd
-            " let startcmd = "!start vgdbd.bat -vi " . usercmd
-            " let startcmd = "!start vgdb.bat -vgdb-port:". s:gdbd_port . ' -vi  ' . usercmd
             let startcmd = "!vgdb.vbs -vgdb-port:". s:gdbd_port . ' -vi  ' . usercmd
 		else
 			if !has('gui')
@@ -565,6 +588,7 @@ function! VGdb(cmd, ...)  " [mode]
 		if line =~ '^vi:'
 			let cmd = substitute(line, '\v^vi:(\w+)', '\=s:callmap[submatch(1)]', "")
 			let hideline = 1
+            " echomsg cmd
 			exec 'call ' . cmd
 			if line =~ ':quit()'
 				return
@@ -598,6 +622,7 @@ function! VGdb(cmd, ...)  " [mode]
 	elseif curwin != winnr()
 		exec curwin."wincmd w"
 	endif
+
 endf
 
 " Toggle breakpoints
@@ -646,7 +671,7 @@ function! VGdb_isPrompt()
     " else
         " return 0
     " endif
-    if  strpart(s:vgdb_prompt, 0, 5) == strpart(getline("."), 0, 5) && col(".") <= strlen(s:vgdb_prompt)+1 
+    if  strpart(s:vgdb_prompt, 0, 5) == strpart(getline("."), 0, 5) && col(".") <= strlen(s:vgdb_prompt) 
         return 1
     else
         return 0
@@ -663,7 +688,27 @@ endf
 
 function! s:VGdb_shortcuts()
 
-	" syntax
+    " ====== syntax {{{
+    highlight DebugBreak guibg=darkred guifg=white ctermbg=darkred ctermfg=white
+    highlight DisabledBreak guibg=lightred guifg=black ctermbg=lightred ctermfg=black
+
+    " sign define vgdbBreakpoint linehl=DebugBreak text=B> 
+    " sign define vgdbDisabledbp linehl=DisabledBreak text=b> 
+    sign define vgdbBreakpoint linehl=DebugBreak text=B> texthl=DebugBreak
+    sign define vgdbDisabledbp linehl=DisabledBreak text=b> texthl=DisabledBreak
+    " sign define current linehl=DebugStop
+    " sign define vgdbCurrent linehl=Search text=>> texthl=Search
+    sign define vgdbCurrent linehl=MatchParen text=>> texthl=MatchParen
+
+    " highlight vgdbGoto guifg=Blue
+    hi def link vgdbKey Statement
+    hi def link vgdbHiLn Statement
+    hi def link vgdbGoto Underlined
+    hi def link vgdbPtr Underlined
+    hi def link vgdbFrame LineNr
+    hi def link vgdbCmd Macro
+    "}}}
+    " syntax
 	syn keyword vgdbKey Function Breakpoint Catchpoint 
 	syn match vgdbFrame /\v^#\d+ .*/ contains=vgdbGoto
 	syn match vgdbGoto /\v<at [^()]+:\d+|file .+, line \d+/
@@ -683,16 +728,22 @@ function! s:VGdb_shortcuts()
 	
 	" shortcut in VGDB window
     inoremap <expr><buffer><BS>  VGdb_isPrompt() ? "" : "\<BS>"
-    nnoremap <expr><buffer>i  VGdb_isModifiable() ? "i" : ""  
-    nnoremap <expr><buffer>I  VGdb_isModifiable() ? "I" : ""  
-    nnoremap <expr><buffer>a  VGdb_isModifiable() ? "a" : ""  
+    noremap <expr><buffer>i  VGdb_isModifiable() ? "i" : ""  
+    noremap <expr><buffer>I  VGdb_isModifiable() ? "I" : ""  
+    noremap <expr><buffer>a  VGdb_isModifiable() ? "a" : ""  
     " nnoremap <expr><buffer>A  VGdb_isModifiable() ? "A" : ""  
-    nnoremap <expr><buffer>x  VGdb_isModifiable() ? "x" : ""  
-    nnoremap <expr><buffer>X  VGdb_isModifiable() ? "X" : ""  
-    nnoremap <expr><buffer>s  VGdb_isModifiable() ? "s" : ""  
-    nnoremap <expr><buffer>S  VGdb_isModifiable() ? "S" : ""  
-    nnoremap <expr><buffer>c  VGdb_isModifiable() ? "c" : ""  
-    nnoremap <expr><buffer>C  VGdb_isModifiable() ? "C" : ""  
+    noremap <expr><buffer>o  VGdb_isModifiable() ? "o" : ""  
+    noremap <expr><buffer>O  VGdb_isModifiable() ? "O" : ""  
+    noremap <expr><buffer>x  VGdb_isModifiable() ? "x" : ""  
+    noremap <expr><buffer>X  VGdb_isModifiable() ? "X" : ""  
+    noremap <expr><buffer>s  VGdb_isModifiable() ? "s" : ""  
+    noremap <expr><buffer>S  VGdb_isModifiable() ? "S" : ""  
+    noremap <expr><buffer>c  VGdb_isModifiable() ? "c" : ""  
+    noremap <expr><buffer>C  VGdb_isModifiable() ? "C" : ""  
+	noremap <buffer><silent>? :call Vgdb_toggle_help()<cr>
+    inoremap <buffer> <silent> <c-i> <c-o>:call Vgdb_gotoInput()<cr>
+    noremap <buffer> <silent> <c-i> :call Vgdb_gotoInput()<cr>
+
 
     inoremap <buffer> <silent> <CR> <c-o>:call VGdb(getline('.'), 'i')<cr>
 	imap <buffer> <silent> <2-LeftMouse> <cr>
@@ -707,9 +758,13 @@ function! s:VGdb_shortcuts()
 
 	nmap <silent> <F9>	 :call VGdb_toggle(0)<CR>
 	nmap <silent> <C-F9>	 :call VGdb_toggle(1)<CR>
+	map! <silent> <F9>	 <c-o>:call VGdb_toggle(0)<CR>
+	map! <silent> <C-F9> <c-o>:call VGdb_toggle(1)<CR>
 	nmap <silent> <Leader>ju	 :call VGdb_jump()<CR>
 	nmap <silent> <C-S-F10>		 :call VGdb_jump()<CR>
 	nmap <silent> <C-F10> :call VGdb_runToCursur()<CR>
+	map! <silent> <C-S-F10>		 <c-o>:call VGdb_jump()<CR>
+	map! <silent> <C-F10> <c-o>:call VGdb_runToCursur()<CR>
 "	nmap <silent> <F6>   :call VGdb("run")<CR>
 	nmap <silent> <C-P>	 :VGdb .p <C-R><C-W><CR>
 	vmap <silent> <C-P>	 y:VGdb .p <C-R>0<CR>
@@ -717,11 +772,19 @@ function! s:VGdb_shortcuts()
 	vmap <silent> <Leader>pr	 y:VGdb p <C-R>0<CR>
 	nmap <silent> <Leader>bt	 :VGdb bt<CR>
 
-	map <silent> <F5>    :VGdb .c<cr>
-	map <silent> <S-F5>  :VGdb k<cr>
-	map <silent> <F10>   :VGdb n<cr>
-	map <silent> <F11>   :VGdb s<cr>
-	map <silent> <S-F11> :VGdb finish<cr>
+	nmap <silent> <F5>    :VGdb .c<cr>
+	nmap <silent> <S-F5>  :VGdb k<cr>
+	nmap <silent> <F10>   :VGdb n<cr>
+	nmap <silent> <F11>   :VGdb s<cr>
+	nmap <silent> <S-F11> :VGdb finish<cr>
+	nmap <silent> <c-q>   <cr>:VGdb q<cr>
+
+	map! <silent> <F5>    <c-o>:VGdb .c<cr>
+	map! <silent> <S-F5>  <c-o>:VGdb k<cr>
+	map! <silent> <F10>   <c-o>:VGdb n<cr>
+	map! <silent> <F11>   <c-o>:VGdb s<cr>
+	map! <silent> <S-F11> <c-o>:VGdb finish<cr>
+	map! <silent> <c-q> <c-o>:VGdb q<cr>
 
 	amenu VGdb.Toggle\ breakpoint<tab>F9			:call VGdb_toggle(0)<CR>
 	amenu VGdb.Run/Continue<tab>F5 					:VGdb c<CR>
@@ -810,6 +873,70 @@ function! VGdb_expandPointerExpr()
 	return 1
 endf
 "}}}
+
+let s:help_open = 0
+" let s:help_text_short = [
+            " \ '" Press ? for help',
+            " \ '',
+            " \ ]
+let s:help_text_short = [
+    \ '<F5> 	- run or continue (.c)',
+    \ '<S-F5> 	- stop debugging (kill)',
+    \ '<F10> 	- next',
+    \ '<F11> 	- step into',
+    \ '<S-F11> - step out (finish)',
+    \ '<C-F10>	- run to cursor (tb and c)',
+    \ '<F9> 	- toggle breakpoint on current line',
+    \ '<C-F9> 	- toggle enable/disable breakpoint on current line',
+    \ '\ju or <C-S-F10> - set next statement (tb and jump)',
+    \ '<C-P>   - view variable under the cursor (.p)',
+    \ ]
+
+let s:help_text = s:help_text_short
+
+" s:update_help_text {{{2
+function s:update_help_text()
+    if s:help_open
+        " let s:help_text = ex#keymap#helptext(s:keymap)
+        let s:help_text = [
+            \ '<F5> 	- run or continue (.c)',
+            \ '<S-F5> 	- stop debugging (kill)',
+            \ '<F10> 	- next',
+            \ '<F11> 	- step into',
+            \ '<S-F11> - step out (finish)',
+            \ '<C-F10>	- run to cursor (tb and c)',
+            \ '<F9> 	- toggle breakpoint on current line',
+            \ '<C-F9> 	- toggle enable/disable breakpoint on current line',
+            \ '\ju or <C-S-F10> - set next statement (tb and jump)',
+            \ '<C-P>   - view variable under the cursor (.p)',
+            \ '<TAB>   - input mode',
+            \ ]
+    else
+        let s:help_text = s:help_text_short
+    endif
+endfunction
+if !exists('g:vgdb_enable_help')
+    let g:vgdb_enable_help = 1
+endif
+
+function Vgdb_toggle_help()
+    if !g:vgdb_enable_help
+        return
+    endif
+
+    let s:help_open = !s:help_open
+    silent exec '1,' . len(s:help_text) . 'd _'
+    call s:update_help_text()
+    silent call append ( 0, s:help_text )
+    silent keepjumps normal! gg
+endfunction
+
+function Vgdb_gotoInput()
+    " exec "InsertLeave"
+    exec "normal G"
+	starti!
+endfunction
+
 
 " ====== commands {{{
 command! -nargs=* -complete=file VGdb :call VGdb(<q-args>)
