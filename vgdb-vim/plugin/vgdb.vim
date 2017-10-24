@@ -432,8 +432,26 @@ function! s:VGdb_cb_close()
     quit
 
     silent! autocmd! VGdbAutoCommand
-    mapclear 
-    mapclear!
+    " 这里为什么要mapclear,想去掉vgdb加入的map
+    " mapclear 
+    " mapclear!
+    " 用mapclear不合理,改为逐个unmap
+
+	unmap <F9>
+	unmap <C-F9>
+	unmap <Leader>ju
+	unmap <C-S-F10>
+	unmap <C-F10>
+	unmap <C-P>
+	unmap <Leader>pr
+	unmap <Leader>bt
+
+	unmap <F5>
+	unmap <S-F5>
+	unmap <F10>
+	unmap <F11>
+	unmap <S-F11>
+	unmap <c-q>
 
 	if s:ismswin
         " so _exrc
