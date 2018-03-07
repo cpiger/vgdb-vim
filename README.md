@@ -1,23 +1,22 @@
-# vgdb
+GDB Vim Frontend
+=================
+# Intro
 
-VGdb is a perl application that enables vim as the front end of a debugger
-like gdb and perldb.
-It both works on MS Windows and Linux. It both works in gvim and vim.
+VGdb is a gdb frontend plugin for Vim.
+
+It both works on MS Windows and Linux. 
+
+It both works in gvim and vim.
 
 It opens a VGDB window in vim that allows user to type gdb command directly, 
 and gdb output is redirected to this windows.
 
-MSVC-style shortcuts are defined by default (like F5/F10...), and you can 
-define how to preview structure like MSVC auto expand feature.
-
 Screenshot:
-![Screenshot](https://github.com/skyshore2001/vgdb-vim/raw/master/demo/screenshot.png)
-
-A flash demo in my package helps you quickly go through the vgdb features.
+![Screenshot](https://github.com/larrupingpig/vgdb-vim/vgdb-vim.png)
 
 **For detail, read this vim help document vgdb-vim/doc/vgdb.txt**
 
-## Install
+## Installation
 
 On Linux, run vgdb_install and specify path.
 
@@ -69,4 +68,5 @@ The following shortcuts is applied that is similar to MSVC:
 	<C-F9> 	- toggle enable/disable breakpoint on current line
 	\ju or <C-S-F10> - set next statement (tb and jump)
 	<C-P> 	- view variable under the cursor (.p)
+    <TAB>   - trigger complete 
 
