@@ -473,7 +473,7 @@ function! VGdb_call(cmd)
 	let usercmd = a:cmd
     if exists("g:vgdb_uselibcall") && g:vgdb_uselibcall
             let lines = libcall(s:vgdb_lib, "tcpcall", "-vgdb-port:". s:gdbd_port .':'.usercmd)
-        else
+    else
 		let usercmd = substitute(usercmd, '["$]', '\\\0', 'g')
 		let lines = system(s:vgdb_client . " \"" . usercmd . "\"")
 	endif
@@ -502,8 +502,8 @@ function! VGdb(cmd, ...)  " [mode]
 			else
 				let s:gdbd_port= 30000 + reltime()[1] % 10000
 			endif
-		else
-			let s:gdbd_port = $VGDB_PORT
+        else
+            let s:gdbd_port = $VGDB_PORT
 		endif
 		if s:ismswin
 			" !!! "!start" is different from "! start"
@@ -832,8 +832,8 @@ function! s:VGdb_shortcuts()
 
 	
 	" shortcut in VGDB window
-    inoremap <expr><buffer><BS>  VGdb_isPrompt() ? "" : "\<BS>"
-    inoremap <expr><buffer><c-h>  VGdb_isPrompt() ? "" : "\<c-h>"
+    inoremap <expr><buffer><BS>  VGdb_isModifiableX() ? "\<BS>"  : ""
+    inoremap <expr><buffer><c-h> VGdb_isModifiableX() ? "\<c-h>" : ""
     noremap <buffer> <silent> i :call VGdb_Keyi()<cr>
     noremap <buffer> <silent> I :call VGdb_KeyI()<cr>
     noremap <buffer> <silent> a :call VGdb_Keya()<cr>
