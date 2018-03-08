@@ -20,7 +20,7 @@ let s:vgdb_winheight = 15
 let s:vgdb_bufname = "__VGDB__"
 let s:vgdb_prompt = '(gdb) '
 let s:dbg = 'gdb'
-let g:vgdb_exrc = $HOME.'/.data/vgdb_exrc'
+let g:vgdb_exrc = $HOME.'/vgdb_exrc'
 
 let s:perldbPromptRE = '^\s*DB<\+\d\+>\+\s*'
 
@@ -472,12 +472,8 @@ endf
 function! VGdb_call(cmd)
 	let usercmd = a:cmd
     if exists("g:vgdb_uselibcall") && g:vgdb_uselibcall
-        if s:ismswin
             let lines = libcall(s:vgdb_lib, "tcpcall", "-vgdb-port:". s:gdbd_port .':'.usercmd)
         else
-            let lines = libcall(s:vgdb_lib, "tcpcall", usercmd)
-        endif
-    else
 		let usercmd = substitute(usercmd, '["$]', '\\\0', 'g')
 		let lines = system(s:vgdb_client . " \"" . usercmd . "\"")
 	endif
@@ -504,9 +500,10 @@ function! VGdb(cmd, ...)  " [mode]
 				let $VGDB_PORT = 30899
 				let s:gdbd_port= 30000 + reltime()[1] % 10000
 			else
-				let $VGDB_PORT= 30000
 				let s:gdbd_port= 30000 + reltime()[1] % 10000
 			endif
+		else
+			let s:gdbd_port = $VGDB_PORT
 		endif
 		if s:ismswin
 			" !!! "!start" is different from "! start"
@@ -516,9 +513,9 @@ function! VGdb(cmd, ...)  " [mode]
 		else
 			if !has('gui')
 				" let startcmd = "!vgdb -vi ".usercmd." &>/dev/null &"
-				let startcmd = "terminal ++hidden vgdb -vgdb-port:". s:gdbd_port . " -vi " .usercmd." &>/dev/null &"
+				let startcmd = "terminal ++hidden vgdb -vgdb-port:". s:gdbd_port . " -vi " .usercmd
 			else
-				let startcmd = "terminal ++hidden vgdb -vgdb-port:". s:gdbd_port . " -vi " .usercmd." &"
+				let startcmd = "terminal ++hidden vgdb -vgdb-port:". s:gdbd_port . " -vi " .usercmd
 			endif
 		endif
         exe 'silent '.startcmd

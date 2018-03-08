@@ -92,15 +92,10 @@ const char *test(const char *cmd)
 const char *tcpcall(const char *cmd)
 {
 	int VGDB_PORT = 30899;
-#ifdef _WINDOWS
-    /* printf("cmd: %s \n", cmd); */
+
     cmd = &cmd[11];
-    /* printf("cmd: %s \n", cmd); */
+#ifdef _WINDOWS
     VGDB_PORT = atoi(cmd);
-    /* printf("VGDB_PORT:%d\n", VGDB_PORT); */
-    cmd = strchr(cmd, ':');
-    cmd = &cmd[1];
-    /* printf("cmd:%s \n", cmd); */
 #endif
 
 	SOCKET SOCK;
@@ -133,7 +128,13 @@ const char *tcpcall(const char *cmd)
 			VGDB_PORT = port;
 		}
 	}
+    else
+    {
+        VGDB_PORT = atoi(cmd);
+    }
 #endif
+    cmd = strchr(cmd, ':');
+    cmd = &cmd[1];
 
 	SOCKADDR_IN addrSrv;
 	addrSrv.sin_addr.s_addr = inet_addr("127.0.0.1");
