@@ -41,6 +41,7 @@ let s:unresolved_bplist = {} " elem: file_basename => %bplist
 let s:nameMap = {} " file_basename => {fullname, pathFixed=0|1}, set by s:getFixedPath()
 
 let s:completers = []
+let s:historys = []
 
 "let g:vgdb_perl = 0
 let g:vgdb_uselibcall=has('libcall')
@@ -177,9 +178,6 @@ function! VGdb_openWindow()
     exe 'silent!  botright ' . s:vgdb_winheight . 'split ' . wcmd
     if line('$') <= 1 && g:vgdb_enable_help
         silent call append ( 0, s:help_text )
-        silent exec '$d _'
-    " else
-        " silent loadview
     endif
 endfunction
 
@@ -204,6 +202,7 @@ function! VGdb_open()
     " setlocal bufhidden=delete
     "i mode disable mouse
     setlocal mouse=nvch
+    setlocal complete=.
     setlocal noswapfile
     setlocal nowrap
     setlocal nobuflisted
@@ -474,6 +473,7 @@ endf
 
 function! VGdb_call(cmd)
 	let usercmd = a:cmd
+    call add(s:historys, usercmd)
     if exists("g:vgdb_uselibcall") && g:vgdb_uselibcall
             let lines = libcall(s:vgdb_lib, "tcpcall", "-vgdb-port:". s:gdbd_port .':'.usercmd)
     else
@@ -925,10 +925,12 @@ function! s:VGdb_shortcuts()
     inoremap <expr><buffer><PageDown>   ""
 
 
-	noremap <buffer><silent>? :call Vgdb_toggle_help()<cr>
+	noremap <buffer><silent>? :call VGdb_toggle_help()<cr>
     " inoremap <buffer> <silent> <c-i> <c-o>:call Vgdb_gotoInput()<cr>
     " noremap <buffer> <silent> <c-i> :call Vgdb_gotoInput()<cr>
 
+    inoremap <expr><buffer> <silent> <c-p>  "\<c-x><c-l>"
+    inoremap <expr><buffer> <silent> <c-r>  "\<c-x><c-n>"
 
     inoremap <expr><buffer> <silent> <TAB>    pumvisible() ? "\<C-n>" : "\<c-x><c-u>"
     inoremap <expr><buffer> <silent> <S-TAB>  pumvisible() ? "\<C-p>" : "\<c-x><c-u>"
@@ -1070,30 +1072,16 @@ endf
 "}}}
 
 let s:help_open = 0
-" let s:help_text_short = [
-            " \ '" Press ? for help',
-            " \ '',
-            " \ ]
 let s:help_text_short = [
-    \ '<F5> 	- run or continue (.c)',
-    \ '<S-F5> 	- stop debugging (kill)',
-    \ '<F10> 	- next',
-    \ '<F11> 	- step into',
-    \ '<S-F11> - step out (finish)',
-    \ '<C-F10>	- run to cursor (tb and c)',
-    \ '<F9> 	- toggle breakpoint on current line',
-    \ '<C-F9> 	- toggle enable/disable breakpoint on current line',
-    \ '\ju or <C-S-F10> - set next statement (tb and jump)',
-    \ '<C-P>   - view variable under the cursor (.p)',
-    \ '<TAB>   - trigger complete ',
-    \ ]
+			\ '" Press ? for help',
+			\ '',
+			\ ]
 
 let s:help_text = s:help_text_short
 
 " s:update_help_text {{{2
 function s:update_help_text()
     if s:help_open
-        " let s:help_text = ex#keymap#helptext(s:keymap)
         let s:help_text = [
             \ '<F5> 	- run or continue (.c)',
             \ '<S-F5> 	- stop debugging (kill)',
@@ -1115,10 +1103,10 @@ if !exists('g:vgdb_enable_help')
     let g:vgdb_enable_help = 1
 endif
 
-function Vgdb_toggle_help()
-    if !g:vgdb_enable_help
-        return
-    endif
+function VGdb_toggle_help()
+	if !g:vgdb_enable_help
+		return
+	endif
 
     let s:help_open = !s:help_open
     silent exec '1,' . len(s:help_text) . 'd _'
@@ -1140,19 +1128,19 @@ fun! VGdb_Complete(findstart, base)
         let usercmd = getline('.')
         if s:dbg == 'gdb' && usercmd =~ '^\s*(gdb)' 
             let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
-            let usercmd = substitute(usercmd, '*', '', '')
+            let usercmd = substitute(usercmd, '*', '', '') "fixed *pointer
             let usercmd = 'complete ' .  usercmd
         endif
-        echomsg "usercmd:".usercmd
+        " echomsg "usercmd:".usercmd
         let s:completers = split(VGdb_call(usercmd), "\n")
-        for ct in (s:completers)
-            echomsg 'ct:'.ct
-        endfor
+        " for ct in (s:completers)
+            " echomsg 'ct:'.ct
+        " endfor
 
         " locate the start of the word
         let line = getline('.')
         let start = col('.') - 1
-        while start > 0 && line[start - 1] =~ '\S' && line[start - 1]  != '*'
+        while start > 0 && line[start - 1] =~ '\S' && line[start-1] != '*' "fixed *pointer
             let start -= 1
         endwhile
         return start
