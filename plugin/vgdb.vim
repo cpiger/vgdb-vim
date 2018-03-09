@@ -100,19 +100,19 @@ function! s:basename(file)
 endf
 "}}}
 " ====== app toolkit {{{
-function! s:gotoGdbWin()
+function! GotoGdbWin()
 	if bufname("%") == s:vgdb_bufname
 		return
 	endif
 	let gdbwin = bufwinnr(s:vgdb_bufname)
 	if gdbwin == -1
 		" if multi-tab or the buffer is hidden
-		call s:VGdb_openWindow()
+		call VGdb_openWindow()
 		let gdbwin = bufwinnr(s:vgdb_bufname)
 	endif
 	exec gdbwin . "wincmd w"
 endf
-
+" go to edit buffer ?
 function! s:gotoTgtWin()
 	let gdbwin = bufwinnr(s:vgdb_bufname)
 	if winnr() == gdbwin
@@ -162,7 +162,7 @@ endf
 
 " ====== functions {{{
 " Get ready for communication
-function! s:VGdb_openWindow()
+function! VGdb_openWindow()
     let bufnum = bufnr(s:vgdb_bufname)
 
     if bufnum == -1
@@ -178,8 +178,8 @@ function! s:VGdb_openWindow()
     if line('$') <= 1 && g:vgdb_enable_help
         silent call append ( 0, s:help_text )
         silent exec '$d _'
-    else
-        silent loadview
+    " else
+        " silent loadview
     endif
 endfunction
 
@@ -196,11 +196,14 @@ function! VGdb_open()
 	set nocursorline
 	set nocursorcolumn
 
-	call s:VGdb_openWindow()
+	call VGdb_openWindow()
 
     " Mark the buffer as a scratch buffer
     setlocal buftype=nofile
-    setlocal bufhidden=delete
+    " We need buffer content hold
+    " setlocal bufhidden=delete
+    "i mode disable mouse
+    setlocal mouse=nvch
     setlocal noswapfile
     setlocal nowrap
     setlocal nobuflisted
@@ -431,7 +434,7 @@ function! s:VGdb_cb_close()
 	endif
 
 	" If gdb window is open then close it.
-    call s:gotoGdbWin()
+    call GotoGdbWin()
     quit
 
     silent! autocmd! VGdbAutoCommand
@@ -519,6 +522,7 @@ function! VGdb(cmd, ...)  " [mode]
 			endif
 		endif
         exe 'silent '.startcmd
+        call setbufvar("!vgdb", "&buflisted", 0)
 		call VGdb_open()
 " 		if is_loadfile
 " 			sleep 200 m
@@ -532,6 +536,11 @@ function! VGdb(cmd, ...)  " [mode]
 		echo "vgdb is not running"
 		return
 	endif
+
+    if -1 == bufwinnr(s:vgdb_bufname)
+        call VGdb_toggle_window()
+        return
+    endif
 
 	let curwin = winnr()
 	let stayInTgtWin = 0
@@ -585,7 +594,7 @@ function! VGdb(cmd, ...)  " [mode]
 		return
 	endif
 
-	call s:gotoGdbWin()
+	call GotoGdbWin()
 	if getline("$") =~ '^\s*$'
 		$delete
 	endif
@@ -604,38 +613,69 @@ function! VGdb(cmd, ...)  " [mode]
 			endif
 		endif
 		if !hideline
-			call s:gotoGdbWin()
+			call GotoGdbWin()
 			" bugfix: '{0x123}' is wrong treated when foldmethod=marker 
 			let line = substitute(line, '{\ze\S', '{ ', 'g')
 			call append(line("$"), line)
-			$
-			redraw
+            $
+            starti!
+            " stopi
+			if line =~ ':quit()'
+				return
+			endif
+            redraw
 			"let output_{out_count} = substitute(line, "", "", "g")
 		endif
 	endfor
-	if s:dbg == 'perldb' && line =~ s:perldbPromptRE
-		let s:vgdb_prompt = line
-	endif
+    if s:dbg == 'perldb' && line =~ s:perldbPromptRE
+        let s:vgdb_prompt = line
+    endif
 
-	if mode == 'i' && !stayInTgtWin
-		call s:gotoGdbWin()
-		if getline('$') != s:vgdb_prompt
-			call append('$', s:vgdb_prompt)
-		endif
-		$
-		starti!
-	endif
+    if mode == 'i' && !stayInTgtWin
+        call GotoGdbWin()
+        if getline('$') != s:vgdb_prompt
+            call append('$', s:vgdb_prompt)
+        endif
+        $
+        starti!
+    endif
 
-	if stayInTgtWin
-		call s:gotoTgtWin()
-	elseif curwin != winnr()
-		exec curwin."wincmd w"
-	endif
+    if stayInTgtWin
+        call s:gotoTgtWin()
+    elseif curwin != winnr()
+        exec curwin."wincmd w"
+    endif
+
+    let s:vgdb_save_cursor = getpos(".")
 
 endf
 
+function VGdb_toggle_window()
+    if  s:vgdb_running == 0
+        return
+    endif
+    let result = VGdb_close_window()
+    if result == 0
+        call GotoGdbWin()
+        call setpos('.', s:vgdb_save_cursor)
+    endif
+endfunction
+
+function VGdb_close_window()
+    let winnr = bufwinnr(s:vgdb_bufname)
+    if winnr != -1
+        call GotoGdbWin()
+        let s:vgdb_save_cursor = getpos(".")
+        close
+        return 1
+    endif
+    return 0
+endfunction
+
+
+
 " Toggle breakpoints
-function! VGdb_toggle(forDisable)
+function! VGdb_Btoggle(forDisable)
 	call s:gotoTgtWin()
 	let file = expand("%:t")
 	let line = line('.')
@@ -750,7 +790,11 @@ fun! VGdb_Keya()
             else
                 let pos[2] = pos[2]+1
                 call setpos(".", pos)
-                starti
+                if pos[2] == col("$") 
+                    starti!
+                else
+                    starti
+                endif
             endif
         else
             starti!
@@ -882,12 +926,16 @@ function! s:VGdb_shortcuts()
 
 
 	noremap <buffer><silent>? :call Vgdb_toggle_help()<cr>
-    inoremap <buffer> <silent> <c-i> <c-o>:call Vgdb_gotoInput()<cr>
-    noremap <buffer> <silent> <c-i> :call Vgdb_gotoInput()<cr>
+    " inoremap <buffer> <silent> <c-i> <c-o>:call Vgdb_gotoInput()<cr>
+    " noremap <buffer> <silent> <c-i> :call Vgdb_gotoInput()<cr>
 
 
     inoremap <expr><buffer> <silent> <TAB>    pumvisible() ? "\<C-n>" : "\<c-x><c-u>"
     inoremap <expr><buffer> <silent> <S-TAB>  pumvisible() ? "\<C-p>" : "\<c-x><c-u>"
+    noremap <buffer><silent> <Tab> ""
+    noremap <buffer><silent> <S-Tab> ""
+
+    noremap <buffer><silent> <ESC> :call VGdb_close_window()<CR>
 
     inoremap <expr><buffer> <silent> <CR> pumvisible() ? "\<c-y><c-o>:call VGdb(getline('.'), 'i')<cr>" : "<c-o>:call VGdb(getline('.'), 'i')<cr>"
 	imap <buffer> <silent> <2-LeftMouse> <cr>
@@ -895,15 +943,16 @@ function! s:VGdb_shortcuts()
 
     nnoremap <buffer> <silent> <CR> :call VGdb(getline('.'), 'n')<cr>
 	nmap <buffer> <silent> <2-LeftMouse> <cr>
+    imap <buffer> <silent> <LeftMouse> <Nop>
 	nmap <buffer> <silent> <kEnter> <cr>
 
 	" inoremap <buffer> <silent> <TAB> <C-X><C-L>
 	"nnoremap <buffer> <silent> : <C-W>p:
 
-	nmap <silent> <F9>	 :call VGdb_toggle(0)<CR>
-	nmap <silent> <C-F9>	 :call VGdb_toggle(1)<CR>
-	map! <silent> <F9>	 <c-o>:call VGdb_toggle(0)<CR>
-	map! <silent> <C-F9> <c-o>:call VGdb_toggle(1)<CR>
+	nmap <silent> <F9>	 :call VGdb_Btoggle(0)<CR>
+	nmap <silent> <C-F9>	 :call VGdb_Btoggle(1)<CR>
+	map! <silent> <F9>	 <c-o>:call VGdb_Btoggle(0)<CR>
+	map! <silent> <C-F9> <c-o>:call VGdb_Btoggle(1)<CR>
 	nmap <silent> <Leader>ju	 :call VGdb_jump()<CR>
 	nmap <silent> <C-S-F10>		 :call VGdb_jump()<CR>
 	nmap <silent> <C-F10> :call VGdb_runToCursur()<CR>
@@ -916,21 +965,23 @@ function! s:VGdb_shortcuts()
 	vmap <silent> <Leader>pr	 y:VGdb p <C-R>0<CR>
 	nmap <silent> <Leader>bt	 :VGdb bt<CR>
 
-	nmap <silent> <F5>    :VGdb .c<cr>
-	nmap <silent> <S-F5>  :VGdb k<cr>
+    nmap <silent> <F5>    :VGdb .c<cr>
+    nmap <silent> <S-F5>  :VGdb k<cr>
 	nmap <silent> <F10>   :VGdb n<cr>
 	nmap <silent> <F11>   :VGdb s<cr>
 	nmap <silent> <S-F11> :VGdb finish<cr>
 	nmap <silent> <c-q>   <cr>:VGdb q<cr>
 
-	map! <silent> <F5>    <c-o>:VGdb .c<cr>
-	map! <silent> <S-F5>  <c-o>:VGdb k<cr>
+    " map! <silent> <F5>    <c-o>:VGdb .c<cr>i
+    " map! <silent> <S-F5>  <c-o>:VGdb k<cr>i
+    map! <silent> <F5>    <c-o>:VGdb .c<cr>
+    map! <silent> <S-F5>  <c-o>:VGdb k<cr>
 	map! <silent> <F10>   <c-o>:VGdb n<cr>
 	map! <silent> <F11>   <c-o>:VGdb s<cr>
 	map! <silent> <S-F11> <c-o>:VGdb finish<cr>
 	map! <silent> <c-q> <c-o>:VGdb q<cr>
 
-	amenu VGdb.Toggle\ breakpoint<tab>F9			:call VGdb_toggle(0)<CR>
+	amenu VGdb.Toggle\ breakpoint<tab>F9			:call VGdb_Btoggle(0)<CR>
 	amenu VGdb.Run/Continue<tab>F5 					:VGdb c<CR>
 	amenu VGdb.Step\ into<tab>F11					:VGdb s<CR>
 	amenu VGdb.Next<tab>F10							:VGdb n<CR>
@@ -1089,17 +1140,19 @@ fun! VGdb_Complete(findstart, base)
         let usercmd = getline('.')
         if s:dbg == 'gdb' && usercmd =~ '^\s*(gdb)' 
             let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
+            let usercmd = substitute(usercmd, '*', '', '')
             let usercmd = 'complete ' .  usercmd
         endif
+        echomsg "usercmd:".usercmd
         let s:completers = split(VGdb_call(usercmd), "\n")
-        " for ct in (s:completers)
-            " echomsg 'ct:'.ct
-        " endfor
+        for ct in (s:completers)
+            echomsg 'ct:'.ct
+        endfor
 
         " locate the start of the word
         let line = getline('.')
         let start = col('.') - 1
-        while start > 0 && line[start - 1] =~ '\S'
+        while start > 0 && line[start - 1] =~ '\S' && line[start - 1]  != '*'
             let start -= 1
         endwhile
         return start
