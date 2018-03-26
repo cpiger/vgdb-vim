@@ -12,7 +12,7 @@ It opens a VGDB window in vim that allows user to type gdb command directly,
 and gdb output is redirected to this windows.
 
 Screenshot:
-![Screenshot](https://github.com/larrupingpig/vgdb-vim/blob/master/vgdb-vim.png)
+![Screenshot](https://github.com/cpiger/vgdb-vim/blob/master/vgdb-vim.png)
 
 **For detail, read this vim help document vgdb-vim/doc/vgdb.txt**
 
@@ -20,7 +20,7 @@ Screenshot:
 
 On Linux, run vgdb_install and specify path.
 
-    git clone https://github.com/larrupingpig/vgdb-vim
+    git clone https://github.com/cpiger/vgdb-vim
     #cd vgdb-vim/src
     #make, you will get libvgdbc.so
     #cp ./libvgdbc.so /usr/lib64
@@ -32,11 +32,11 @@ On MS Windows, you need install Perl (and of course gcc/gdb).
    1. install strawberry-perl-5.26.0.2-64bit.msi and make sure perl.exe in the default search path
    2. install tdm-gcc-5.1.0-3.exe and make sure gdb.exe in the default search path
    3. install sed-4.2.1-bin.zip and make sure sed.exe in the default search path
-   4. git clone https://github.com/larrupingpig/vgdb-vim
+   4. git clone https://github.com/cpiger/vgdb-vim
    5. open windows command line cmd.exe as administrator privileges
    6. cd vgdb-vim/src
    7. mingw32-make, you will get vgdbc.dll
-   ![](https://github.com/larrupingpig/vgdb-vim/blob/master/mingw32-make.png)
+   ![](https://github.com/cpiger/vgdb-vim/blob/master/mingw32-make.png)
    8. copy vgdb vgdb.bat vgdbc.dll to your vim.exe/gvim.exe directory and make sure gvim.exe in the default search path
    9. copy vgdb-vim to $VIMFILES directory
 
